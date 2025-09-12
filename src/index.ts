@@ -69,7 +69,7 @@ export type Fimbul<P = unknown, R = Record<string, unknown>> = {
   ) => ResultObject<R>;
 };
 
-function Fimbul<
+export function Fimbul<
   P = Record<string, unknown>,
   R = Record<string, unknown>,
 >(): Fimbul<P, R> {

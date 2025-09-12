@@ -84,7 +84,7 @@ export type FimbulAsync<
   has: (key: keyof R) => boolean;
 };
 
-function FimbulAsync<
+export function FimbulAsync<
   P = Record<string, unknown>,
   R = Record<string, unknown>,
 >(): FimbulAsync<P, R> {
