@@ -1,28 +1,3 @@
----
-title: Fimbul API Documentation
-description: Manage complex computation dependencies with automatic topological sorting and built-in caching
-package: "@fimbul-works/fimbul"
-version: 1.3.0
-language: typescript
-npm: https://www.npmjs.com/package/@fimbul-works/fimbul
-github: https://github.com/fimbul-works/fimbul-ts
-tags:
-  - typescript
-  - algorithm
-  - library
-  - dag
-  - directed-graph
-  - graph
-  - dependency-resolution
-  - dependency-management
-  - topological-sort
-  - computation
-  - caching
-  - functional
-  - procedural-generation
-  - procgen
----
-
 # Fimbul API Documentation
 
 Complete API for [Fimbul](README.md) - manage complex computation dependencies with automatic topological sorting and built-in caching.

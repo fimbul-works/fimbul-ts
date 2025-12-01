@@ -29,7 +29,8 @@ const tags = [...new Set([...PROJECT_TAGS, ...keywords])];
 // Remove description quotes and trailing period for cleaner output
 const description = pkg.description.replace(/^["']|["']$/g, "").replace(/\.$/, "");
 
-const header = `---
+// Frontmatter for later...
+const frontMatter = `---
 title: ${PROJECT_TITLE} API Documentation
 description: ${description}
 package: "${pkg.name}"
@@ -40,8 +41,9 @@ github: ${github}
 tags:
   - ${tags.join("\n  - ")}
 ---
+`;
 
-# ${PROJECT_TITLE} API Documentation
+const header = `# ${PROJECT_TITLE} API Documentation
 
 Complete API for [${PROJECT_TITLE}](README.md) - ${pkg.description.toLowerCase()}.
 
