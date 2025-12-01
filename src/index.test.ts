@@ -1,4 +1,4 @@
-import { describe, expect, test } from "@jest/globals";
+import { describe, expect, it, test, vi } from "vitest";
 
 import Fimbul from ".";
 
@@ -14,10 +14,7 @@ describe("Fimbul", () => {
   });
 
   it("should handle dependency computation", () => {
-    const { define, get } = Fimbul<
-      { base: number },
-      { double: number; triple: number }
-    >();
+    const { define, get } = Fimbul<{ base: number }, { double: number; triple: number }>();
 
     define("double", ({ base }) => base * 2);
     define("triple", ({ base }) => base * 3);
@@ -27,26 +24,17 @@ describe("Fimbul", () => {
   });
 
   it("should manage complex dependency tree computations", () => {
-    const { define, get } = Fimbul<
-      { a: number; b: number },
-      { sum: number; product: number; combined: number }
-    >();
+    const { define, get } = Fimbul<{ a: number; b: number }, { sum: number; product: number; combined: number }>();
 
     define("sum", ({ a, b }) => a + b);
     define("product", ({ a, b }) => a * b);
-    define("combined", (_, { sum, product }) => sum + product, [
-      "sum",
-      "product",
-    ]);
+    define("combined", (_, { sum, product }) => sum + product, ["sum", "product"]);
 
     expect(get("combined", { a: 2, b: 3 })).toBe(11); // (2 + 3) + (2 * 3)
   });
 
   it("should return multiple values with getMany", () => {
-    const { define, getMany } = Fimbul<
-      { value: number },
-      { double: number; square: number }
-    >();
+    const { define, getMany } = Fimbul<{ value: number }, { double: number; square: number }>();
 
     define("double", ({ value }) => value * 2);
     define("square", ({ value }) => value * value);
@@ -58,12 +46,9 @@ describe("Fimbul", () => {
   });
 
   it("should execute dependency compute function only once when multiple children depend on it", () => {
-    const { define, getMany } = Fimbul<
-      DefaultRecord,
-      { dependency: number; child1: number; child2: number }
-    >();
+    const { define, getMany } = Fimbul<DefaultRecord, { dependency: number; child1: number; child2: number }>();
 
-    const mockDependencyFunction = jest.fn().mockReturnValue(10);
+    const mockDependencyFunction = vi.fn().mockReturnValue(10);
 
     define("dependency", mockDependencyFunction);
 
@@ -96,12 +81,9 @@ describe("Fimbul", () => {
   });
 
   it("should properly cache nullish values and not recompute them", () => {
-    const { define, getMany } = Fimbul<
-      DefaultRecord,
-      { zero: number; usesZero1: number; usesZero2: number }
-    >();
+    const { define, getMany } = Fimbul<DefaultRecord, { zero: number; usesZero1: number; usesZero2: number }>();
 
-    const computeZero = jest.fn().mockReturnValue(0);
+    const computeZero = vi.fn().mockReturnValue(0);
     define("zero", computeZero);
 
     define("usesZero1", (_, { zero }) => zero + 1, ["zero"]);

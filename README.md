@@ -1,23 +1,35 @@
 
-# Fimbul
+![Fimbul](./images/fimbul-text-logo.png)
 
-Fimbul is a TypeScript library for elegant dependency resolution in computation graphs - powerful, minimal, and blazingly fast.
+Fimbul manages complex computation dependencies using [directed acyclic graphs (DAGs)](https://en.wikipedia.org/wiki/Directed_acyclic_graph). Define your computations, declare their dependencies, and let Fimbul handle the rest.
+
+It automatically prevents circular references, sorts computations in the correct execution order, and caches results to eliminate redundant calculations.
 
 Whether you're generating procedural worlds, handling data transformations, or managing complex state calculations, Fimbul helps you build clear, maintainable, and efficient computation chains.
 
 [![npm version](https://badge.fury.io/js/%40fimbul-works%2Ffimbul.svg)](https://www.npmjs.com/package/@fimbul-works/fimbul)
 [![TypeScript](https://badges.frapsoft.com/typescript/code/typescript.svg?v=101)](https://github.com/microsoft/TypeScript)
 
+## Table of Contents
+
+- [Features](#features)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Why Fimbul?](#why-fimbul)
+- [Core Concepts](#core-concepts)
+- [Documentation](#documentation)
+- [Examples](#example-world-generator)
+- [Advanced Usage](#advanced-usage)
+- [License](#license)
+
 ## Features
 
-- 🌳 Type-safe dependency graph management
+- 🔍 Type-safe dependency graph management with full type inference and validation
 - ⚡ Automatic dependency resolution and caching
 - 🔄 Both synchronous and asynchronous computation support
 - 🎯 Zero external dependencies
 - 🧮 Optimal performance with O(n) worst-case complexity
-- 📦 Ultra-lightweight at just 534 bytes minified
-- 🎨 Perfect for procedural generation and complex data transformations
-- 🔍 Full TypeScript type inference and validation
+- 📦 Ultra-lightweight at just 518 bytes minified
 
 ## Installation
 
@@ -25,6 +37,8 @@ Whether you're generating procedural worlds, handling data transformations, or m
 npm install @fimbul-works/fimbul
 # or
 yarn add @fimbul-works/fimbul
+# or
+pnpm install @fimbul-works/fimbul
 ```
 
 ## Quick Start
@@ -80,6 +94,14 @@ const results = compute.getMany(['greeting', 'output'], {
 // }
 ```
 
+## Why Fimbul?
+
+Unlike manual dependency management or reactive frameworks, Fimbul gives you:
+- **Explicit control** over computation flow
+- **Zero overhead** - no observers, no subscriptions
+- **Predictable performance** - O(n) complexity with perfect caching
+- **Type safety** - catch errors at compile time, not runtime
+
 ## Core Concepts
 
 ### Computation Nodes
@@ -107,6 +129,10 @@ Fimbul is designed for optimal memory usage:
 - No memory leaks from circular references
 - Efficient garbage collection of unused results
 - Minimal memory footprint
+
+## Documentation
+
+For detailed API documentation, see the [API Reference](API.md).
 
 ## Example: World Generator
 
@@ -289,10 +315,10 @@ Fimbul provides clear error messages for common issues:
 ```typescript
 // Attempting to define duplicate nodes
 compute.define('output', fn); // OK
-compute.define('output', fn); // Error: Node "output" already exists!
+compute.define('output', fn); // Error: "output" already defined
 
 // Missing dependencies
-compute.define('derived', fn, ['missing']); // Error: Node "missing" not found!
+compute.define('derived', fn, ['missing']); // Error: "missing" not found
 ```
 
 ### Type Safety
@@ -310,13 +336,6 @@ compute.define('doubled', ({base}) => `${base * 2}`);
 // Type error: missing dependency
 compute.define('tripled', (_, {missing}) => missing * 3);
 ```
-
-### Performance Tips
-
-- Define computation nodes in topological order when possible
-- Reuse result objects between calls to leverage caching
-- For heavy computations, consider using the async version
-- Break complex calculations into smaller nodes for better reusability
 
 ## License
 

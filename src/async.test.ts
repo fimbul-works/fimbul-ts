@@ -1,9 +1,9 @@
+import { describe, expect, it, test, vi } from "vitest";
 import FimbulAsync, { type AsyncComputationNode } from "./async";
-import { describe, expect, it, jest } from "@jest/globals";
 
 type DefaultRecord = Record<string, unknown>;
 
-jest.useFakeTimers();
+vi.useFakeTimers();
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -19,10 +19,7 @@ describe("FimbulAsync", () => {
   });
 
   it("should handle dependency computation", async () => {
-    const { define, get } = FimbulAsync<
-      { base: number },
-      { double: number; triple: number }
-    >();
+    const { define, get } = FimbulAsync<{ base: number }, { double: number; triple: number }>();
 
     define("double", async ({ base }) => base * 2);
     define("triple", async ({ base }) => base * 3);
@@ -32,26 +29,17 @@ describe("FimbulAsync", () => {
   });
 
   it("should manage complex dependency tree computations", async () => {
-    const { define, get } = FimbulAsync<
-      { a: number; b: number },
-      { sum: number; product: number; combined: number }
-    >();
+    const { define, get } = FimbulAsync<{ a: number; b: number }, { sum: number; product: number; combined: number }>();
 
     define("sum", async ({ a, b }) => a + b);
     define("product", async ({ a, b }) => a * b);
-    define("combined", async (input, { sum, product }) => sum + product, [
-      "sum",
-      "product",
-    ]);
+    define("combined", async (input, { sum, product }) => sum + product, ["sum", "product"]);
 
     await expect(get("combined", { a: 2, b: 3 })).resolves.toBe(11); // (2 + 3) + (2 * 3)
   });
 
   it("should return multiple values with getMany", async () => {
-    const { define, getMany } = FimbulAsync<
-      { value: number },
-      { double: number; square: number }
-    >();
+    const { define, getMany } = FimbulAsync<{ value: number }, { double: number; square: number }>();
 
     define("double", async ({ value }) => value * 2);
     define("square", async ({ value }) => value * value);
@@ -67,9 +55,7 @@ describe("FimbulAsync", () => {
 
     const { define, getMany } = FimbulAsync<DefaultRecord, Result>();
 
-    const mockDependencyFunction = jest
-      .fn()
-      .mockResolvedValue(10 as never) as AsyncComputationNode<
+    const mockDependencyFunction = vi.fn().mockResolvedValue(10 as never) as AsyncComputationNode<
       DefaultRecord,
       Result,
       number
@@ -77,13 +63,9 @@ describe("FimbulAsync", () => {
 
     define("dependency", mockDependencyFunction);
 
-    define("child1", async (input, { dependency }) => dependency + 1, [
-      "dependency",
-    ]);
+    define("child1", async (input, { dependency }) => dependency + 1, ["dependency"]);
 
-    define("child2", async (input, { dependency }) => dependency + 2, [
-      "dependency",
-    ]);
+    define("child2", async (input, { dependency }) => dependency + 2, ["dependency"]);
 
     await getMany(["child1", "child2"], {});
 
@@ -91,10 +73,7 @@ describe("FimbulAsync", () => {
   });
 
   it("should handle delayed computation with mocked timer", async () => {
-    const { define, get } = FimbulAsync<
-      DefaultRecord,
-      { delayedResult: number }
-    >();
+    const { define, get } = FimbulAsync<DefaultRecord, { delayedResult: number }>();
 
     define("delayedResult", async () => {
       await delay(1000);
@@ -103,7 +82,7 @@ describe("FimbulAsync", () => {
 
     const promise = get("delayedResult", {});
 
-    await jest.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTimeAsync(1000);
 
     const result = await promise;
 
@@ -111,10 +90,7 @@ describe("FimbulAsync", () => {
   });
 
   it("should handle concurrent computations correctly", async () => {
-    const { define, getMany } = FimbulAsync<
-      DefaultRecord,
-      { first: number; second: number }
-    >();
+    const { define, getMany } = FimbulAsync<DefaultRecord, { first: number; second: number }>();
 
     define("first", async () => 1);
 
@@ -125,10 +101,7 @@ describe("FimbulAsync", () => {
   });
 
   it("should resolve dependencies in the correct sequential order", async () => {
-    const { define, get } = FimbulAsync<
-      DefaultRecord,
-      { first: string; second: string; combined: string }
-    >();
+    const { define, get } = FimbulAsync<DefaultRecord, { first: string; second: string; combined: string }>();
 
     const order: string[] = [];
 
@@ -142,11 +115,7 @@ describe("FimbulAsync", () => {
       return "Second";
     });
 
-    define(
-      "combined",
-      async (input, { first, second }) => `${first} and ${second}`,
-      ["first", "second"],
-    );
+    define("combined", async (input, { first, second }) => `${first} and ${second}`, ["first", "second"]);
 
     await get("combined", {});
 
@@ -171,10 +140,7 @@ describe("FimbulAsync", () => {
   });
 
   it("should correctly handle a failing promise", async () => {
-    const { define, get } = FimbulAsync<
-      DefaultRecord,
-      { errorResult: number }
-    >();
+    const { define, get } = FimbulAsync<DefaultRecord, { errorResult: number }>();
 
     define("errorResult", () => {
       return new Promise((_, reject) => {
@@ -186,10 +152,7 @@ describe("FimbulAsync", () => {
   });
 
   it("should compute parallelizable operations in parallel", async () => {
-    const { define, get } = FimbulAsync<
-      DefaultRecord,
-      { a: string; b: string; c: string }
-    >();
+    const { define, get } = FimbulAsync<DefaultRecord, { a: string; b: string; c: string }>();
 
     define("a", async () => {
       await delay(1000);
@@ -211,7 +174,7 @@ describe("FimbulAsync", () => {
 
     const result = get("c", {});
 
-    await jest.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTimeAsync(1000);
 
     await expect(result).resolves.toBe("A B");
   });
