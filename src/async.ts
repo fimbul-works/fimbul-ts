@@ -90,62 +90,48 @@ type ResolvedComputationNode<P = unknown, R = Record<string, unknown>, ReturnTyp
  * The underlying implementation ensures that the computation graph remains a DAG
  * by preventing circular references and automatically sorting nodes topologically.
  *
- * @template P - Type of input parameters passed to all computations
- * @template R - Type representing all possible computation results
+ * @template {unknown} P - Type of input parameters passed to all computations
+ * @template {Record<string, unknown>} R - Type representing all possible computation results
  */
 export interface FimbulAsyncGraph<P = unknown, R = Record<string, unknown>> {
   /**
-   * Defines an asynchronous computation node in the dependency graph.<br/>
-   * <strong>Parameters:</strong>
-   * <ul>
-   *   <li><strong>key:</strong> Unique identifier for this computation node.</li>
-   *   <li><strong>fn:</strong> Function that performs the computation. It receives input parameters and results from its dependencies. Can return either a value or a Promise.</li>
-   *   <li><strong>dependencies:</strong> Optional array of keys for nodes this computation depends on.</li>
-   * </ul>
-   * <strong>Note:</strong> This method will throw an error if:
-   * <ul>
-   *   <li>A node with the same key already exists.</li>
-   *   <li>Any of the specified dependency nodes do not exist.</li>
-   *   <li>Adding this node would create a circular reference in the graph.</li>
-   * </ul>
+   * Defines an asynchronous computation node in the dependency graph.
+   * @template {keyof R} K
+   * @param {K} key - Unique identifier for this computation node
+   * @param {AsyncComputationNode<P, R, R[K]>} fn - Function that performs the computation. It receives input parameters and results from its dependencies. Can return either a value or a Promise.
+   * @param {Dependencies<R>} [dependencies] - Optional array of keys for nodes this computation depends on
+   * @throws {Error} if a node with the same key already exists
+   * @throws {Error} Any of the specified dependency nodes do not exist
    */
-  define: <K extends keyof R>(key: K, fn: AsyncComputationNode<P, R, R[K]>, dependencies?: Dependencies<R>) => void;
+  define<K extends keyof R>(key: K, fn: AsyncComputationNode<P, R, R[K]>, dependencies?: Dependencies<R>): void;
 
   /**
-   * Checks if a computation node with the given key exists in the graph.<br/>
-   * <strong>Parameters:</strong>
-   * <ul>
-   *  <li><strong>key:</strong> The identifier of the node to check.</li>
-   * </ul>
-   * <strong>Returns:</strong> True if the node exists, false otherwise.
+   * Checks if a computation node with the given key exists in the graph.
+   * @param {keyof R} key - The identifier of the node to check
+   * @return {boolean} true if the node exists, false otherwise
    */
-  has: (key: keyof R) => boolean;
+  has(key: keyof R): boolean;
 
   /**
-   * Computes and returns a Promise for the value of a specific node.<br/>
-   * <strong>Parameters:</strong>
-   * <ul>
-   *   <li><strong>key:</strong> The identifier of the node to compute.</li>
-   *   <li><strong>params:</strong> Input parameters to pass to the computation.</li>
-   *   <li><strong>results:</strong> Optional cache of previously computed results.</li>
-   * </ul>
-   * <strong>Returns:</strong> A Promise that resolves to the computed value of the specified node.<br/>
-   * <strong>Throws:</strong> An error if the node with the given key doesn't exist.
+   * Computes and returns a Promise for the value of a specific node.
+   * @template {keyof R} K
+   * @param {K} key - The identifier of the node to compute
+   * @param {P} params - Input parameters to pass to the computation
+   * @param {ResultObject<R>} [results] - Optional cache of previously computed results
+   * @return {Promise<R[K]>} A Promise that resolves to the computed value of the specified node
+   * @throws {Error} if the node with the given key doesn't exist
    */
-  get: <K extends keyof R>(key: K, params: P, results?: ResultObject<R>) => Promise<R[K]>;
+  get<K extends keyof R>(key: K, params: P, results?: ResultObject<R>): Promise<R[K]>;
 
   /**
-   * Computes and returns a Promise for values of multiple nodes.<br/>
-   * <strong>Parameters:</strong>
-   * <ul>
-   *   <li><strong>keys:</strong> Array of node identifiers to compute.</li>
-   *   <li><strong>params:</strong> Input parameters to pass to the computations.</li>
-   *   <li><strong>results:</strong> Optional cache of previously computed results.</li>
-   * </ul>
-   * <strong>Returns:</strong> A Promise that resolves to an object containing the computed values for all requested keys.<br/>
-   * <strong>Throws:</strong> An error if any node with the given keys doesn't exist.
+   * Computes and returns a Promise for values of multiple nodes.
+   * @param {Dependencies<R>} keys - Array of node identifiers to compute
+   * @param {P} params - Input parameters to pass to the computations
+   * @param {ResultObject<R>} [results] - Optional cache of previously computed results
+   * @return {Promise<ResultObject<R>>} A Promise that resolves to an object containing the computed values for all requested keys
+   * @throws {Error} if any node with the given keys doesn't exist
    */
-  getMany: (keys: Dependencies<R>, params: P, results?: ResultObject<R>) => Promise<ResultObject<R>>;
+  getMany(keys: Dependencies<R>, params: P, results?: ResultObject<R>): Promise<ResultObject<R>>;
 }
 
 /**
@@ -153,7 +139,7 @@ export interface FimbulAsyncGraph<P = unknown, R = Record<string, unknown>> {
  *
  * @template P - Type of input parameters passed to all computations
  * @template R - Type representing all possible computation results
- * @returns A new FimbulAsync computation manager instance
+ * @returns {FimbulAsyncGraph} A new FimbulAsync computation manager instance
  *
  * @example
  * ```typescript
