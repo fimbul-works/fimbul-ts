@@ -3,7 +3,7 @@
 
 Fimbul manages complex computation dependencies using [directed acyclic graphs (DAGs)](https://en.wikipedia.org/wiki/Directed_acyclic_graph). Define your computations, declare their dependencies, and let Fimbul handle the rest.
 
-It automatically prevents circular references, sorts computations in the correct execution order, and caches results to eliminate redundant calculations.
+It automatically prevents circular references, executes computations in the correct order, and only runs each computation once to reduce redundant calculations.
 
 Whether you're generating procedural worlds, handling data transformations, or managing complex state calculations, Fimbul helps you build clear, maintainable, and efficient computation chains.
 
@@ -27,9 +27,9 @@ Whether you're generating procedural worlds, handling data transformations, or m
 - 🔍 Type-safe dependency graph management with full type inference and validation
 - ⚡ Automatic dependency resolution and caching
 - 🔄 Both synchronous and asynchronous computation support
-- 🎯 Zero external dependencies
 - 🧮 Optimal performance with O(n) worst-case complexity
-- 📦 Ultra-lightweight at just 518 bytes minified
+- 🎯 Zero external dependencies
+- 📦 Ultra-lightweight
 
 ## Installation
 
@@ -43,30 +43,15 @@ pnpm install @fimbul-works/fimbul
 
 ## Quick Start
 
-```typescript
+```javascript
 import Fimbul from '@fimbul-works/fimbul';
 
-type Params = {
-  greeting: string;
-  recipient: string;
-};
-
-type Results = {
-  greeting: string;
-  punctuation: string;
-  output: string;
-};
-
-const compute = Fimbul<Params, Results>();
+const compute = Fimbul();
 
 // Define computation nodes
-compute.define('greeting',
-  ({ greeting, recipient }) => `${greeting} ${recipient}`
-);
+compute.define('greeting', ({ greeting, recipient }) => `${greeting} ${recipient}`);
 
-compute.define('punctuation',
-  () => '!'
-);
+compute.define('punctuation', ({ punctuation }) => punctuation ?? '!');
 
 compute.define('output',
   (params, { greeting, punctuation }) => `${greeting}${punctuation}`,
@@ -74,23 +59,27 @@ compute.define('output',
 );
 
 // Check if nodes exist
-console.log(compute.has('output')); // true
+console.log(compute.has('output'));  // true
 console.log(compute.has('missing')); // false
 
 // Get a single result
 const output = compute.get('output', {
   greeting: 'Hello',
   recipient: 'Fimbul'
-}); // "Hello Fimbul!"
+});
+console.log(output); // "Hello Fimbul!"
 
 // Get multiple results at once
-const results = compute.getMany(['greeting', 'output'], {
+const results = compute.getMany(['greeting', 'punctuation', 'output'], {
   greeting: 'Hello',
+  punctuation: '?',
   recipient: 'Fimbul'
 });
+console.log(results);
 // {
 //   greeting: "Hello Fimbul",
-//   output: "Hello Fimbul!"
+//   punctuation: "?",
+//   output: "Hello Fimbul?"
 // }
 ```
 
@@ -125,10 +114,9 @@ The dependency system is designed for maximum efficiency and safety:
 ### Memory Management
 
 Fimbul is designed for optimal memory usage:
-- Only stores function definitions and computed results
-- No memory leaks from circular references
-- Efficient garbage collection of unused results
+- Only stores function definitions
 - Minimal memory footprint
+- No memory leaks from circular references
 
 ## Documentation
 
@@ -312,6 +300,7 @@ const result = await compute.get('double', { base: 21 }); // 42
 ### Error Handling
 
 Fimbul provides clear error messages for common issues:
+
 ```typescript
 // Attempting to define duplicate nodes
 compute.define('output', fn); // OK
@@ -324,6 +313,7 @@ compute.define('derived', fn, ['missing']); // Error: "missing" not found
 ### Type Safety
 
 Fimbul leverages TypeScript's type system to catch errors at compile time:
+
 ```typescript
 type Params = { base: number };
 type Results = { doubled: number };

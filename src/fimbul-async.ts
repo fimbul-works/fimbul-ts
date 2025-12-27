@@ -10,7 +10,7 @@
  *
  * Results are cached to avoid redundant computations within the same execution chain.
  */
-import type { Dependencies, ResultObject } from "./index";
+import type { Dependencies, ResultObject } from "./fimbul.js";
 
 /**
  * Represents the output of asynchronous computations in the dependency graph.
@@ -46,7 +46,7 @@ export type AsyncResultObject<R> = { [K in keyof R]: Promise<R[K]> };
  *
  * @template P - Type of input parameters passed to all computations
  * @template R - Type representing all possible computation results
- * @template ReturnType - The specific return type of this computation
+ * @template T - The specific return type of this computation
  *
  * @example
  * ```typescript
@@ -72,16 +72,10 @@ export type AsyncResultObject<R> = { [K in keyof R]: Promise<R[K]> };
  *   };
  * ```
  */
-export type AsyncComputationNode<P = unknown, R = Record<string, unknown>, ReturnType = R[keyof R]> = (
-  params: P,
-  dependencies: ResultObject<R>,
-) => Promise<ReturnType> | ReturnType;
+export type AsyncComputationNode<P, R, T = R[keyof R]> = (params: P, dependencies: ResultObject<R>) => Promise<T> | T;
 
 /** Internal type for Promise-normalized computation nodes */
-type ResolvedComputationNode<P = unknown, R = Record<string, unknown>, ReturnType = R[keyof R]> = (
-  input: P,
-  dependencies: AsyncResultObject<R>,
-) => Promise<ReturnType>;
+type ResolvedComputationNode<P, R, T = R[keyof R]> = (input: P, dependencies: AsyncResultObject<R>) => Promise<T>;
 
 /**
  * Interface for the FimbulAsync computation manager. Provides methods to define computation nodes
@@ -90,15 +84,15 @@ type ResolvedComputationNode<P = unknown, R = Record<string, unknown>, ReturnTyp
  * The underlying implementation ensures that the computation graph remains a DAG
  * by preventing circular references and automatically sorting nodes topologically.
  *
- * @template {unknown} P - Type of input parameters passed to all computations
- * @template {Record<string, unknown>} R - Type representing all possible computation results
+ * @template P - Type of input parameters passed to all computations
+ * @template R - Type representing all possible computation results
  */
-export interface FimbulAsyncGraph<P = unknown, R = Record<string, unknown>> {
+export interface FimbulAsyncGraph<P, R> {
   /**
    * Defines an asynchronous computation node in the dependency graph.
    * @template {keyof R} K
    * @param {K} key - Unique identifier for this computation node
-   * @param {AsyncComputationNode<P, R, R[K]>} fn - Function that performs the computation. It receives input parameters and results from its dependencies. Can return either a value or a Promise.
+   * @param {AsyncComputationNode<P, R, R[K]>} fn - Function that performs the computation
    * @param {Dependencies<R>} [dependencies] - Optional array of keys for nodes this computation depends on
    * @throws {Error} if a node with the same key already exists
    * @throws {Error} Any of the specified dependency nodes do not exist
@@ -121,7 +115,7 @@ export interface FimbulAsyncGraph<P = unknown, R = Record<string, unknown>> {
    * @return {Promise<R[K]>} A Promise that resolves to the computed value of the specified node
    * @throws {Error} if the node with the given key doesn't exist
    */
-  get<K extends keyof R>(key: K, params: P, results?: ResultObject<R>): Promise<R[K]>;
+  get<K extends keyof R, T extends R[K]>(key: K, params: P, results?: ResultObject<R>): Promise<T>;
 
   /**
    * Computes and returns a Promise for values of multiple nodes.
@@ -139,7 +133,7 @@ export interface FimbulAsyncGraph<P = unknown, R = Record<string, unknown>> {
  *
  * @template P - Type of input parameters passed to all computations
  * @template R - Type representing all possible computation results
- * @returns {FimbulAsyncGraph} A new FimbulAsync computation manager instance
+ * @returns {FimbulAsyncGraph<P, R>} A new FimbulAsync computation manager instance
  *
  * @example
  * ```typescript
@@ -181,8 +175,9 @@ export interface FimbulAsyncGraph<P = unknown, R = Record<string, unknown>> {
  * console.log(results); // { height: 0.5, temperature: 0.3, biome: 'forest' }
  * ```
  */
-export function FimbulAsync<P = unknown, R = Record<string, unknown>>(): FimbulAsyncGraph<P, R> {
+export function FimbulAsync<P, R>(): FimbulAsyncGraph<P, R> {
   const nodes: Map<keyof R, ResolvedComputationNode<P, R, R[keyof R]>> = new Map();
+  const notFound = (key: keyof R) => `"${key as string}" not found`;
 
   function define<K extends keyof R>(key: K, fn: AsyncComputationNode<P, R, R[K]>, dependencies?: Dependencies<R>) {
     if (nodes.has(key)) {
@@ -190,43 +185,24 @@ export function FimbulAsync<P = unknown, R = Record<string, unknown>>(): FimbulA
     }
 
     if (dependencies) {
-      for (const dependencyKey of dependencies) {
-        if (!nodes.has(dependencyKey)) throw new Error(`"${dependencyKey as string}" not found`);
+      for (const depKey of dependencies) {
+        if (!nodes.has(depKey)) throw new Error(notFound(depKey));
       }
     }
 
     nodes.set(key, provideDependencies(fn, dependencies ?? []));
   }
 
-  async function get<K extends keyof R>(
+  async function get<K extends keyof R, T extends R[K]>(
     key: K,
     params: P,
     results: ResultObject<R> = {} as ResultObject<R>,
-  ): Promise<ResultObject<R>[K]> {
+  ): Promise<T> {
     if (results[key] !== undefined) {
-      return results[key];
+      return results[key] as T;
     }
 
     return resolveComputation(key, params, resultsToPromises(results));
-  }
-
-  async function resolveComputation<K extends keyof R>(
-    key: K,
-    params: P,
-    results: AsyncResultObject<R> = {} as AsyncResultObject<R>,
-  ): Promise<R[K]> {
-    const result = results[key];
-    if (result !== undefined) {
-      return await result;
-    }
-
-    const fn = nodes.get(key);
-    if (!fn) {
-      throw new Error(`"${key as string}" not found`);
-    }
-
-    results[key] = fn(params, results) as Promise<R[K]>;
-    return await results[key];
   }
 
   async function getMany(
@@ -241,11 +217,30 @@ export function FimbulAsync<P = unknown, R = Record<string, unknown>>(): FimbulA
     return nodes.has(key);
   }
 
-  function provideDependencies<ReturnType>(
-    fn: AsyncComputationNode<P, R, ReturnType>,
+  async function resolveComputation<K extends keyof R, T extends R[K]>(
+    key: K,
+    params: P,
+    results: AsyncResultObject<R> = {} as AsyncResultObject<R>,
+  ): Promise<T> {
+    const result = results[key];
+    if (result !== undefined) {
+      return (await result) as T;
+    }
+
+    const fn = nodes.get(key);
+    if (!fn) {
+      throw new Error(notFound(key));
+    }
+
+    results[key] = fn(params, results) as Promise<R[K]>;
+    return (await results[key]) as T;
+  }
+
+  function provideDependencies<T>(
+    fn: AsyncComputationNode<P, R, T>,
     dependencies: Dependencies<R>,
-  ): ResolvedComputationNode<P, R, ReturnType> {
-    return async (params: P, results: AsyncResultObject<R>): Promise<ReturnType> => {
+  ): ResolvedComputationNode<P, R, T> {
+    return async (params: P, results: AsyncResultObject<R>): Promise<T> => {
       const resolvedDependencies = await resolveDependencies(dependencies, params, results);
       return await fn(params, resolvedDependencies);
     };
@@ -281,5 +276,3 @@ export function FimbulAsync<P = unknown, R = Record<string, unknown>>(): FimbulA
     has,
   };
 }
-
-export default FimbulAsync;

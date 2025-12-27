@@ -1,5 +1,5 @@
 import { describe, expect, it, test, vi } from "vitest";
-import FimbulAsync, { type AsyncComputationNode } from "./async";
+import { type AsyncComputationNode, FimbulAsync } from "./fimbul-async";
 
 type DefaultRecord = Record<string, unknown>;
 
@@ -120,6 +120,14 @@ describe("FimbulAsync", () => {
     await get("combined", {});
 
     expect(order).toEqual(["first", "second"]);
+  });
+
+  it("should handle an existing result cache correctly", async () => {
+    const { define, get } = FimbulAsync<DefaultRecord, { result: number }>();
+
+    define("result", async () => 42);
+
+    await expect(get("result", {}, { result: 42 })).resolves.toBe(42);
   });
 
   it("should throw error for undefined key", async () => {

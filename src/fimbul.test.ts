@@ -1,6 +1,5 @@
 import { describe, expect, it, test, vi } from "vitest";
-
-import Fimbul from ".";
+import { Fimbul } from "./fimbul";
 
 type DefaultRecord = Record<string, unknown>;
 
