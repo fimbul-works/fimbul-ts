@@ -44,7 +44,7 @@ pnpm install @fimbul-works/fimbul
 ## Quick Start
 
 ```javascript
-import Fimbul from '@fimbul-works/fimbul';
+import { Fimbul } from '@fimbul-works/fimbul';
 
 const compute = Fimbul();
 
@@ -272,7 +272,7 @@ This example demonstrates Fimbul's power in managing complex, interdependent cal
 Fimbul provides first-class support for async computations:
 
 ```typescript
-import FimbulAsync from '@fimbul-works/fimbul/async';
+import { FimbulAsync } from '@fimbul-works/fimbul';
 
 type Params = { base: number };
 type Results = { double: number, triple: number };

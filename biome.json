@@ -8,16 +8,11 @@
   "linter": {
     "rules": {
       "suspicious": {
-        "noDebugger": "off",
-        "noConsoleLog": "off",
-        "noAssignInExpressions": "off",
-        "noExplicitAny": "off"
+        "noAssignInExpressions": "off"
       },
       "style": {
-        "noShoutyConstants": "warn",
-        "useNamingConvention": "off",
-        "noCommaOperator": "off",
-        "noParameterAssign": "off"
+        "useSingleVarDeclarator": "off",
+        "noCommaOperator": "off"
       }
     }
   }

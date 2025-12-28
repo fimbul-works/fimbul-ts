@@ -1,15 +1,3 @@
-/**
- * FimbulAsync - Asynchronous computation manager for dependency graphs
- *
- * FimbulAsync implements an elegant dependency resolution algorithm using directed acyclic graphs (DAGs)
- * for asynchronous computations. It prevents circular references and features automatic topological sorting
- * to ensure computations are executed in the correct order.
- *
- * Unlike its synchronous counterpart, FimbulAsync handles Promise-based computations, allowing for
- * operations like API calls, file I/O, or other asynchronous tasks within the dependency graph.
- *
- * Results are cached to avoid redundant computations within the same execution chain.
- */
 import type { Dependencies, ResultObject } from "./fimbul.js";
 
 /**
