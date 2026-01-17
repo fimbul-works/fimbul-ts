@@ -9,6 +9,7 @@ Whether you're generating procedural worlds, handling data transformations, or m
 
 [![npm version](https://badge.fury.io/js/%40fimbul-works%2Ffimbul.svg)](https://www.npmjs.com/package/@fimbul-works/fimbul)
 [![TypeScript](https://badges.frapsoft.com/typescript/code/typescript.svg?v=101)](https://github.com/microsoft/TypeScript)
+[![Bundle Size](https://img.shields.io/bundlephobia/minzip/@fimbul-works/fimbul)](https://bundlephobia.com/package/@fimbul-works/fimbul)
 
 ## Table of Contents
 
