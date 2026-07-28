@@ -148,63 +148,42 @@ export interface FimbulGraph<P, R> {
  */
 export function Fimbul<P, R>(): FimbulGraph<P, R> {
   const nodes: Map<keyof R, ComputationNode<P, R, R[keyof R]>> = new Map();
-  const notFound = (key: keyof R) => `"${key as string}" not found`;
-
-  function define<K extends keyof R>(key: K, fn: ComputationNode<P, R, R[K]>, dependencies?: Dependencies<R>) {
-    if (nodes.has(key)) {
-      throw new Error(`"${key as string}" already defined`);
-    }
-
-    if (dependencies) {
-      for (const depKey of dependencies) {
-        if (!nodes.has(depKey)) throw new Error(notFound(depKey));
+  const notFound = (key: keyof R) => "Missing: " + (key as string);
+  const graph = {
+    define(key, fn, dependencies) {
+      if (nodes.has(key)) {
+        throw new Error("Conflict: " + (key as string));
       }
-    }
 
-    nodes.set(key, dependencies ? provideDependencies(fn, dependencies) : fn);
-  }
+      if (dependencies) {
+        for (const depKey of dependencies) {
+          if (!nodes.has(depKey)) {
+            throw new Error(notFound(depKey));
+          }
+        }
+      }
 
-  function has(key: keyof R) {
-    return nodes.has(key);
-  }
+      nodes.set(
+        key,
+        dependencies ? (params, results) => fn(params, graph.getMany(dependencies, params, results ?? {})) : fn,
+      );
+    },
+    has: (key: keyof R) => nodes.has(key),
+    get<K extends keyof R, T extends R[K]>(key: K, params: P, results: ResultObject<R> = {} as ResultObject<R>): T {
+      if (key in results) {
+        return results[key] as T;
+      }
 
-  function get<K extends keyof R, T extends R[K]>(
-    key: K,
-    params: P,
-    results: ResultObject<R> = {} as ResultObject<R>,
-  ): T {
-    if (results[key] !== undefined) {
+      const fn = nodes.get(key);
+      if (!fn) {
+        throw new Error(notFound(key));
+      }
+
+      results[key] = fn(params, results) as R[K];
       return results[key] as T;
-    }
-
-    const fn = nodes.get(key);
-    if (!fn) {
-      throw new Error(notFound(key));
-    }
-
-    results[key] = fn(params, results) as R[K];
-    return results[key] as T;
-  }
-
-  function getMany(
-    keys: Dependencies<R>,
-    params: P,
-    results: ResultObject<R> = {} as ResultObject<R>,
-  ): ResultObject<R> {
-    return keys.reduce((acc, key) => ((acc[key] = get(key, params, results)), acc), results);
-  }
-
-  function provideDependencies<T>(
-    fn: ComputationNode<P, R, T>,
-    dependencies: Dependencies<R>,
-  ): ComputationNode<P, R, T> {
-    return (params: P, results: ResultObject<R>): T => fn(params, getMany(dependencies, params, results ?? {}));
-  }
-
-  return {
-    define,
-    has,
-    get,
-    getMany,
-  };
+    },
+    getMany: (keys: Dependencies<R>, params: P, results: ResultObject<R> = {} as ResultObject<R>): ResultObject<R> =>
+      keys.reduce((acc, key) => ((acc[key] = graph.get(key, params, results)), acc), results),
+  } as FimbulGraph<P, R>;
+  return graph;
 }

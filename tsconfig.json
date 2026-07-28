@@ -10,7 +10,8 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "outDir": "./dist/esm/"
+    "outDir": "./dist/esm/",
+    "rootDir": "./src"
   },
   "include": ["src"],
   "exclude": ["src/**/*.test.ts", "node_modules"]
