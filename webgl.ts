@@ -43,11 +43,7 @@ class WebGLFimbul<TParam extends Record<string, unknown>> {
     });
   }
 
-  execute(
-    key: string,
-    parameters: TParam,
-    results: Map<string, Float32Array> = new Map(),
-  ) {
+  execute(key: string, parameters: TParam, results: Map<string, Float32Array> = new Map()) {
     const node = this.programs.get(key);
     if (!node) throw new Error(`Node ${key} not found`);
 
@@ -71,17 +67,7 @@ class WebGLFimbul<TParam extends Record<string, unknown>> {
       if (!depData) {
         return;
       }
-      gl.texImage2D(
-        gl.TEXTURE_2D,
-        0,
-        gl.R32F,
-        depData.length,
-        1,
-        0,
-        gl.RED,
-        gl.FLOAT,
-        depData,
-      );
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, depData.length, 1, 0, gl.RED, gl.FLOAT, depData);
     });
 
     // Execute compute operation

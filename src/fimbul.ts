@@ -1,189 +1,114 @@
-/**
- * Represents the output of computations in the dependency graph.
- * This is a mapped type that preserves the structure of the original type `R`.
- *
- * @template R - The type representing all possible computation results
- *
- * @example
- * ```typescript
- * type WorldGenResults = {
- *   height: number;
- *   temperature: number;
- *   biome: string;
- * };
- *
- * // ResultObject<WorldGenResults> is equivalent to:
- * // {
- * //   height: number;
- * //   temperature: number;
- * //   biome: string;
- * // }
- * ```
- */
-export type ResultObject<R> = { [K in keyof R]: R[K] };
+import type { Dependencies, ResultObject } from "./types.js";
 
 /**
- * Represents an array of keys that identify computation nodes in the DAG.
- * Used to specify dependencies between nodes or to request multiple values.
+ * Represents a computation node in the Directed Acyclic Graph (DAG).
+ * Each node takes input parameters and resolved dependency outputs,
+ * then evaluates and returns a typed result.
  *
- * @template R - The type representing all possible computation results
- *
- * @example
- * ```typescript
- * type WorldGenResults = {
- *   height: number;
- *   temperature: number;
- *   biome: string;
- * };
- *
- * // Dependencies<WorldGenResults> could be: ['height', 'temperature']
- * // This would create edges from the 'height' and 'temperature' nodes to the dependent node
- * ```
- */
-export type Dependencies<R> = Array<keyof R>;
-
-/**
- * Represents a computation node in the dependency graph.
- * Each node takes input parameters and results from its dependencies,
- * then produces a value of a specific type.
- *
- * @template P - Type of input parameters passed to all computations
- * @template R - Type representing all possible computation results
- * @template T - The specific return type of this computation
- *
- * @example
- * ```typescript
- * type WorldGenParams = { x: number; y: number; };
- * type WorldGenResults = { height: number; temperature: number; biome: string; };
- *
- * // A computation node that calculates temperature based on height
- * const temperatureNode: ComputationNode<WorldGenParams, WorldGenResults, number> =
- *   ({ y }, { height }) => y - height * 0.8;
- * ```
+ * @template P - Type of input parameters passed to all computations.
+ * @template R - Type representing all possible computation results in the graph.
+ * @template T - The specific return type of this computation node.
  */
 export type ComputationNode<P, R, T = R[keyof R]> = (params: P, dependencies: ResultObject<R>) => T;
 
 /**
- * Interface for the Fimbul computation manager. Provides methods to define computation nodes and retrieve computed values.
+ * Demand-Driven Directed Acyclic Graph (DAG) Computation Engine.
  *
- * The underlying implementation ensures that the computation graph remains a DAG
- * by preventing circular references and automatically sorting nodes topologically.
+ * Manages computation nodes and evaluates dependencies on-demand using
+ * topological ordering and call-scoped memoization. Guarantees cycle
+ * freedom by construction.
  *
- * @template P - Type of input parameters passed to all computations
- * @template R - Type representing all possible computation results
+ * @template P - Type of input parameters passed to all computations.
+ * @template R - Type representing all possible computation results.
  */
-export interface FimbulGraph<P, R> {
-  /**
-   * Defines a computation node in the dependency graph.
-   * @template {keyof R} K
-   * @param {K} key - Unique identifier for this computation node
-   * @param {ComputationNode<P, R, R[K]>} fn - Function that performs the computation. It receives input parameters and results from its dependencies
-   * @param {Dependencies<R>} [dependencies] - Optional array of keys for nodes this computation depends on
-   * @throws {Error} if a node with the same key already exists
-   * @throws {Error} Any of the specified dependency nodes do not exist
-   */
-  define<K extends keyof R>(key: K, fn: ComputationNode<P, R, R[K]>, dependencies?: Dependencies<R>): void;
+export class Fimbul<P, R> {
+  protected n = new Map<keyof R, ComputationNode<P, R, R[keyof R]>>();
 
   /**
    * Checks if a computation node with the given key exists in the graph.
-   * @param {keyof R} key - The identifier of the node to check
-   * @return {boolean} true if the node exists, false otherwise
+   * @param {keyof R} key - The identifier of the node to check.
+   * @return {boolean} True if the node exists, false otherwise.
    */
-  has(key: keyof R): boolean;
+  public has(key: keyof R): boolean {
+    return this.n.has(key);
+  }
 
   /**
-   * Computes and returns the value of a specific node.
+   * Defines a computation node in the DAG.
+   * Dependencies must be defined prior to this node, ensuring acyclicity by construction.
+   *
    * @template {keyof R} K
-   * @param {K} key - The identifier of the node to compute
-   * @param {P} params - Input parameters to pass to the computation
-   * @param {ResultObject<R>} [results] - Optional cache of previously computed results
-   * @return {R[K]} The computed value of the specified node
-   * @throws {Error} if the node with the given key doesn't exist
+   * @param {K} key - Unique identifier for this computation node.
+   * @param {ComputationNode<P, R, R[K]>} fn - Function that performs the computation. It receives input parameters and results from its dependencies.
+   * @param {Dependencies<R>} [dependencies] - Optional array of keys for upstream nodes this computation depends on.
+   * @throws {Error} If a node with the same key already exists.
+   * @throws {Error} If any of the specified dependency nodes do not exist.
    */
-  get<K extends keyof R, T extends R[K]>(key: K, params: P, results?: ResultObject<R>): T;
+  public define<K extends keyof R>(key: K, fn: ComputationNode<P, R, R[K]>, dependencies?: Dependencies<R>): this {
+    if (this.n.has(key)) {
+      throw new Error(`"${key as string}" is already defined`);
+    }
+
+    dependencies?.forEach(
+      (depKey) =>
+        !this.n.has(depKey) &&
+        (() => {
+          throw new Error(`"${depKey as string}" is not defined`);
+        })(),
+    );
+
+    this.n.set(
+      key,
+      dependencies ? (params, results) => fn(params, this.getMany(dependencies, params, results ?? {})) : fn,
+    );
+
+    return this;
+  }
 
   /**
-   * Computes and returns values for multiple nodes.
-   * @param {Dependencies<R>} keys - Array of node identifiers to compute
-   * @param {P} params - Input parameters to pass to the computations
-   * @param {ResultObject<R>} [results] - Optional cache of previously computed results
-   * @return {ResultObject<R>} An object containing the computed values for all requested keys
-   * @throws {Error} if the node with the given key doesn't exist
+   * Evaluates and returns the value of a specific node on-demand.
+   * Recursively evaluates any required upstream dependencies, memoizing results in the call cache.
+   *
+   * @template {keyof R} K
+   * @param {K} key - The identifier of the node to compute.
+   * @param {P} params - Input parameters to pass to the computation.
+   * @param {ResultObject<R>} [results] - Optional cache of previously computed results for call-scoped memoization.
+   * @return {R[K]} The computed value of the specified node.
+   * @throws {Error} If the node with the given key doesn't exist.
    */
-  getMany(keys: Dependencies<R>, params: P, results?: ResultObject<R>): ResultObject<R>;
-}
-
-/**
- * Creates a new Fimbul computation manager instance.
- *
- * @template P - Type of input parameters passed to all computations
- * @template R - Type representing all possible computation results
- * @returns {FimbulGraph<P, R>} A new Fimbul computation manager instance
- *
- * @example
- * ```typescript
- * type WorldGenParams = { x: number; y: number; };
- * type WorldGenResults = { height: number; temperature: number; biome: string; };
- *
- * const worldgen = Fimbul<WorldGenParams, WorldGenResults>();
- *
- * // Define computation nodes
- * worldgen.define('height', ({ x, y }) => Math.cos(x) * Math.sin(y));
- * worldgen.define('temperature',
- *   ({ y }, { height }) => y - height * 0.8,
- *   ['height']
- * );
- * worldgen.define('biome', (params, { height, temperature }) => {
- *   if (height < 0.3) return 'ocean';
- *   if (height > 0.9) return 'snow';
- *   if (height > 0.7) return 'mountain';
- *   if (temperature < 0.3) return 'tundra';
- *   if (temperature > 0.8) return 'desert';
- *  return 'forest';
- * }, ['height', 'temperature']);
- *
- * // Get computed value - Fimbul automatically handles the dependency resolution and topological sorting
- * const biome = worldgen.get('biome', { x: Math.random(), y: Math.random() });
- * ```
- */
-export function Fimbul<P, R>(): FimbulGraph<P, R> {
-  const nodes: Map<keyof R, ComputationNode<P, R, R[keyof R]>> = new Map();
-  const notFound = (key: keyof R) => "Missing: " + (key as string);
-  const graph = {
-    define(key, fn, dependencies) {
-      if (nodes.has(key)) {
-        throw new Error("Conflict: " + (key as string));
-      }
-
-      if (dependencies) {
-        for (const depKey of dependencies) {
-          if (!nodes.has(depKey)) {
-            throw new Error(notFound(depKey));
-          }
-        }
-      }
-
-      nodes.set(
-        key,
-        dependencies ? (params, results) => fn(params, graph.getMany(dependencies, params, results ?? {})) : fn,
-      );
-    },
-    has: (key: keyof R) => nodes.has(key),
-    get<K extends keyof R, T extends R[K]>(key: K, params: P, results: ResultObject<R> = {} as ResultObject<R>): T {
-      if (key in results) {
-        return results[key] as T;
-      }
-
-      const fn = nodes.get(key);
-      if (!fn) {
-        throw new Error(notFound(key));
-      }
-
-      results[key] = fn(params, results) as R[K];
+  public get<K extends keyof R, T extends R[K]>(
+    key: K,
+    params: P,
+    results: ResultObject<R> = {} as ResultObject<R>,
+  ): T {
+    if (key in results) {
       return results[key] as T;
-    },
-    getMany: (keys: Dependencies<R>, params: P, results: ResultObject<R> = {} as ResultObject<R>): ResultObject<R> =>
-      keys.reduce((acc, key) => ((acc[key] = graph.get(key, params, results)), acc), results),
-  } as FimbulGraph<P, R>;
-  return graph;
+    }
+
+    const fn = this.n.get(key);
+    if (!fn) {
+      throw new Error(`"${key as string}" is not defined`);
+    }
+
+    results[key] = fn(params, results) as R[K];
+    return results[key] as T;
+  }
+
+  /**
+   * Evaluates and returns values for multiple target nodes on-demand.
+   * Shares a memoization cache across all requested nodes to prevent redundant evaluations.
+   *
+   * @param {Dependencies<R>} keys - Array of node identifiers to compute.
+   * @param {P} params - Input parameters to pass to the computations.
+   * @param {ResultObject<R>} [results] - Optional cache of previously computed results for call-scoped memoization.
+   * @return {ResultObject<R>} An object containing the computed values for all requested keys.
+   * @throws {Error} If any node with the given key doesn't exist.
+   */
+  public getMany<K extends Dependencies<R>>(
+    keys: K,
+    params: P,
+    results: ResultObject<R> = {} as ResultObject<R>,
+  ): Pick<ResultObject<R>, K[number]> {
+    return keys.reduce((acc, key) => ((acc[key] = this.get(key, params, results)), acc), results);
+  }
 }

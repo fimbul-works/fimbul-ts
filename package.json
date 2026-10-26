@@ -1,7 +1,7 @@
 {
   "name": "@fimbul-works/fimbul",
-  "description": "Manage complex computation dependencies with automatic topological sorting and built-in caching",
-  "version": "2.0.2",
+  "description": "A lightweight, type-safe computation graph engine with automatic topological resolution and built-in caching",
+  "version": "3.0.0",
   "type": "module",
   "private": false,
   "license": "MIT",
@@ -15,6 +15,7 @@
     "url": "https://github.com/fimbul-works/fimbul-ts/issues"
   },
   "keywords": [
+    "computation-graph",
     "dag",
     "directed-graph",
     "graph",
@@ -27,29 +28,43 @@
     "procgen",
     "typescript"
   ],
-  "main": "./dist/cjs/index.js",
-  "module": "./dist/esm/index.js",
-  "types": "./dist/esm/index.d.ts",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/esm/index.d.ts",
-      "import": "./dist/esm/index.js",
-      "require": "./dist/cjs/index.js"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
     }
   },
-  "files": ["dist", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "sideEffects": false,
   "scripts": {
-    "build": "rm -rf dist && pnpm build:esm && pnpm build:cjs",
+    "clean": "rm -rf dist",
+    "clean:bundles": "rm -rf bundles",
+    "build": "pnpm clean && pnpm build:esm && pnpm build:cjs && pnpm build:docs",
     "build:esm": "tsc -p tsconfig.json",
     "build:cjs": "tsc -p tsconfig.cjs.json && echo '{\"type\":\"commonjs\"}' > dist/cjs/package.json",
-    "format": "npx biome format --write src",
+    "build:bundles": "pnpm clean:bundles && NODE_OPTIONS='--max-old-space-size=4096' tsdown",
+    "build:all": "pnpm build && pnpm build:bundles && pnpm sizes",
+    "build:docs": "typedoc",
+    "format": "npx biome format --write",
     "test": "vitest",
-    "prepublishOnly": "npm run build"
+    "sizes": "npx bundle-size",
+    "prepublishOnly": "pnpm run build"
   },
   "devDependencies": {
-    "@biomejs/biome": "^1.9.4",
-    "typescript": "^5.9.3",
-    "vitest": "^4.0.16"
+    "@biomejs/biome": "^2.5.15",
+    "@fimbul-works/bundle-size": "^2.0.0",
+    "tsdown": "^0.23.0",
+    "typedoc": "^0.28.20",
+    "typedoc-plugin-markdown": "^4.13.1",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.3"
   }
 }

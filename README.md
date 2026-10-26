@@ -1,9 +1,8 @@
+# [![@fimbul-works/fimbul](./fimbul-logo.svg)](https://www.npmjs.com/package/@fimbul-works/fimbul)
 
-![Fimbul](./images/fimbul-text-logo.png)
+Fimbul is a lightweight, type-safe computation graph engine for TypeScript. Define your computations, declare their dependencies, and let Fimbul evaluate them on demand using [directed acyclic graphs (DAGs)](https://en.wikipedia.org/wiki/Directed_acyclic_graph).
 
-Fimbul manages complex computation dependencies using [directed acyclic graphs (DAGs)](https://en.wikipedia.org/wiki/Directed_acyclic_graph). Define your computations, declare their dependencies, and let Fimbul handle the rest.
-
-It automatically prevents circular references, executes computations in the correct order, and only runs each computation once to reduce redundant calculations.
+It automatically guarantees cycle freedom by construction, executes computations in topological order, and eliminates redundant calculations with call-scoped memoization.
 
 Whether you're generating procedural worlds, handling data transformations, or managing complex state calculations, Fimbul helps you build clear, maintainable, and efficient computation chains.
 
@@ -25,12 +24,12 @@ Whether you're generating procedural worlds, handling data transformations, or m
 
 ## Features
 
-- 🔍 Type-safe dependency graph management with full type inference and validation
-- ⚡ Automatic dependency resolution and caching
+- 🔍 Type-safe computation graph engine with full type inference and compile-time validation
+- ⚡ Demand-driven evaluation with automatic topological resolution and memoization
 - 🔄 Both synchronous and asynchronous computation support
-- 🧮 Optimal performance with O(n) worst-case complexity
+- 🧮 Optimal performance with O(V + E) worst-case complexity
 - 🎯 Zero external dependencies
-- 📦 Ultra-lightweight
+- 📦 Ultra-lightweight footprint
 
 ## Installation
 
@@ -47,7 +46,7 @@ pnpm install @fimbul-works/fimbul
 ```javascript
 import { Fimbul } from '@fimbul-works/fimbul';
 
-const compute = Fimbul();
+const compute = new Fimbul();
 
 // Define computation nodes
 compute.define('greeting', ({ greeting, recipient }) => `${greeting} ${recipient}`);
@@ -63,14 +62,14 @@ compute.define('output',
 console.log(compute.has('output'));  // true
 console.log(compute.has('missing')); // false
 
-// Get a single result
+// Evaluate a single node on-demand
 const output = compute.get('output', {
   greeting: 'Hello',
   recipient: 'Fimbul'
 });
 console.log(output); // "Hello Fimbul!"
 
-// Get multiple results at once
+// Evaluate multiple nodes at once
 const results = compute.getMany(['greeting', 'punctuation', 'output'], {
   greeting: 'Hello',
   punctuation: '?',
@@ -86,11 +85,12 @@ console.log(results);
 
 ## Why Fimbul?
 
-Unlike manual dependency management or reactive frameworks, Fimbul gives you:
-- **Explicit control** over computation flow
-- **Zero overhead** - no observers, no subscriptions
-- **Predictable performance** - O(n) complexity with perfect caching
-- **Type safety** - catch errors at compile time, not runtime
+Unlike manual dependency management or heavy reactive frameworks, Fimbul gives you:
+- **Explicit control** over computation flow without callback or promise spaghetti
+- **Demand-driven evaluation** — only calculate the nodes you actually request
+- **Zero overhead** — no observers, no subscriptions, no memory leaks
+- **Predictable performance** — O(V + E) single-pass evaluation with call-scoped memoization
+- **Type safety** — catch missing dependencies and invalid types at compile time
 
 ## Core Concepts
 
@@ -98,26 +98,26 @@ Unlike manual dependency management or reactive frameworks, Fimbul gives you:
 
 Each node in your computation graph represents a discrete calculation unit that:
 - Takes input parameters
-- Optionally depends on other nodes
+- Optionally depends on other upstream nodes
 - Produces a typed output
-- Is computed exactly once per set of parameters
+- Is evaluated on demand and memoized per execution pass
 - Can be synchronous or asynchronous
 
-### Dependencies
+### Dependencies & DAG Topology
 
 The dependency system is designed for maximum efficiency and safety:
-- Explicit dependency declaration prevents hidden dependencies
-- Automatic topological sorting ensures correct execution order
-- Built-in cycle detection prevents infinite loops
-- Smart caching with result reuse
-- Type-safe dependency chains
+- Explicit dependency declaration ensures clear, deterministic dataflow
+- Guaranteed cycle freedom by construction (nodes can only depend on previously registered nodes)
+- Automatic topological resolution ensures dependent nodes execute in the correct order
+- Call-scoped memoization eliminates redundant calculations across shared (diamond) dependencies
+- Strict type-safe dependency chains
 
 ### Memory Management
 
 Fimbul is designed for optimal memory usage:
-- Only stores function definitions
-- Minimal memory footprint
-- No memory leaks from circular references
+- Only stores node function definitions and metadata on the instance
+- Evaluation caches are ephemeral and call-scoped, freeing memory as soon as computation completes
+- No memory leaks from dangling observers or circular references
 
 ## Documentation
 
@@ -146,7 +146,7 @@ type WorldGenResults = {
   biome: string;
 };
 
-const worldgen = Fimbul<WorldGenParams, WorldGenResults>();
+const worldgen = new Fimbul<WorldGenParams, WorldGenResults>();
 ```
 
 #### 1. Continent Shapes
@@ -278,7 +278,7 @@ import { FimbulAsync } from '@fimbul-works/fimbul';
 type Params = { base: number };
 type Results = { double: number, triple: number };
 
-const compute = FimbulAsync<Params, Results>();
+const compute = new FimbulAsync<Params, Results>();
 
 // Define async computation nodes
 compute.define('double',
@@ -319,7 +319,7 @@ Fimbul leverages TypeScript's type system to catch errors at compile time:
 type Params = { base: number };
 type Results = { doubled: number };
 
-const compute = Fimbul<Params, Results>();
+const compute = new Fimbul<Params, Results>();
 
 // Type error: string is not assignable to number
 compute.define('doubled', ({base}) => `${base * 2}`);
